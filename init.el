@@ -11,7 +11,7 @@
 
 (defvar required-packages
   `(dash
-    dash-at-point	
+    dash-at-point
     ag
     nose
     jedi
@@ -55,6 +55,11 @@
 
 (server-start)
 
+(add-hook 'prog-mode-hook 'whitespace-mode t)
+(add-hook 'prog-mode-hook 'mark-prog-mode t)
+(add-hook 'prog-mode-hook 'which-func-mode t)
+(add-hook 'before-save-hook 'delete-trailing-whitespace t)
+
 (require 'theme-config)
 (require 'org-config)
 (require 'deft-config)
@@ -67,8 +72,15 @@
 (require 'lisp-config)
 (require 'haskell-config)
 (require 'key-config)
+(require 'copyright-config)
 
 (projectile-global-mode)
+
+(defvar local-emacs-dir "~/EmacsLocal/")
+
+(dolist (file (directory-files local-emacs-dir t "\.el$"))
+  (message file)
+  (load file))
 
 (provide 'init)
 
