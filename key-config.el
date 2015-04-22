@@ -7,6 +7,7 @@
 (require 'projectile)
 (require 'dash-at-point)
 (require 'nose)
+(require 'ace-jump-mode)
 
 ;;; OSX keybindings
 (setq mac-command-modifier 'meta)
@@ -18,9 +19,9 @@
 (global-set-key (kbd "<f11>") 'org-agenda)
 (global-set-key (kbd "<f12>") 'org-capture)
 
-; Search shortcuts
 (global-set-key (kbd "C-c d") 'dash-at-point)
 (global-set-key (kbd "C-c o") 'open-at-point)
+(global-set-key (kbd "C-c j") 'ace-jump-mode)
 (define-key projectile-mode-map (kbd "C-c p a") 'projectile-ag)
 
 ; Python settings

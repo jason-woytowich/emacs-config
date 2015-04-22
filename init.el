@@ -16,27 +16,36 @@
     nose
     jedi
     flycheck-pyflakes
+    flycheck-haskell
     haskell-mode
+    dot-mode
+    markdown-mode
     smartparens
+    pretty-lambdada
     ido-ubiquitous
     exec-path-from-shell
     deft
     org
     flycheck
     magit
+    ace-jump-mode
     yaml-mode
+    git-gutter-fringe+
     projectile
     zenburn-theme
     monokai-theme))
+
+(defun check-required-packages ()
+  (dolist (package required-packages)
+    (when (not (package-installed-p package))
+      (package-install package))))
 
 (add-to-list 'package-archives
              '("melpa" . "http://melpa.org/packages/") t)
 
 (package-initialize)
 
-(dolist (package required-packages)
-  (when (not (package-installed-p package))
-    (package-install package)))
+(check-required-packages)
 
 (let ((elpa-directory (expand-file-name "~/.emacs.d/elpa/")))
   (dolist (file (directory-files elpa-directory))
@@ -58,6 +67,8 @@
 (add-hook 'prog-mode-hook 'whitespace-mode t)
 (add-hook 'prog-mode-hook 'which-func-mode t)
 (add-hook 'before-save-hook 'delete-trailing-whitespace t)
+
+(require 'git-gutter-fringe+)
 
 (require 'theme-config)
 (require 'org-config)
