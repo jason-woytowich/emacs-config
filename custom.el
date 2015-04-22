@@ -39,6 +39,4 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(git-gutter-fr+-added ((t (:foreground "#A6E22E"))))
- '(git-gutter-fr+-deleted ((t (:foreground "#F92672"))))
- '(git-gutter-fr+-modified ((t (:foreground "#66D9EF")))))
+ )

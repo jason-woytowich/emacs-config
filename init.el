@@ -83,6 +83,7 @@
 (require 'haskell-config)
 (require 'key-config)
 (require 'copyright-config)
+(require 'window-config)
 
 (projectile-global-mode)
 
