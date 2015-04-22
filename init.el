@@ -56,7 +56,6 @@
 (server-start)
 
 (add-hook 'prog-mode-hook 'whitespace-mode t)
-(add-hook 'prog-mode-hook 'mark-prog-mode t)
 (add-hook 'prog-mode-hook 'which-func-mode t)
 (add-hook 'before-save-hook 'delete-trailing-whitespace t)
 
