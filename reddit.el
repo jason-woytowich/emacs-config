@@ -3,12 +3,9 @@
 ;;; Commentary:
 
 ;;; ToDo:
-;;; - [ ] - Fix inline self posts
 ;;; - [ ] - Generalize the idea of sections
-;;; - [ ] - Create a self post page
 ;;; - [ ] - Render targets
 ;;; - [ ] - Create an imgur page
-;;; - [ ] - Create a shortcut to opening in external browser
 
 ;;; Code:
 
@@ -56,6 +53,8 @@
   "Subreddit"
   :group 'reddit)
 
+(defvar reddit-hidden-selftext-text "...\n")
+
 (defvar-local reddit-received-count 0)
 (defvar-local reddit-last-received "")
 (defvar-local reddit-subreddit nil)
@@ -63,29 +62,189 @@
 
 (defvar reddit-visited-list '())
 
-(defun reddit-get-subreddit (elt)
-  "Get the subreddit of ELT and propertize."
-  (propertize (format "/r/%s" (cdr (assoc 'subreddit elt)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Reddit mode
+
+(defvar reddit-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "SPC") #'reddit-link-action)
+    (define-key map (kbd "<return>") #'reddit-link-action)
+    (define-key map (kbd "<tab>") #'reddit-goto-next-link-action)
+    (define-key map (kbd "e") #'reddit-grab-more)
+    (define-key map (kbd "c") #'reddit-open-comments)
+    (define-key map (kbd "n") #'reddit-goto-next-article)
+    (define-key map (kbd "o") #'reddit-change-order)
+    (define-key map (kbd "p") #'reddit-goto-previous-article)
+    (define-key map (kbd "g") #'reddit-refresh)
+    map))
+
+(define-derived-mode reddit-mode special-mode "Reddit"
+  "Major mode for crushing it!"
+  (use-local-map reddit-mode-map)
+  (visual-line-mode t))
+
+;;; Commands
+
+(defun reddit (&optional subreddit order)
+  "Start reddit.  Optionally include SUBREDDIT or ORDER.  ORDER may be one of \"Hot\" \"New\"."
+  (interactive)
+  (unless order
+    (setq order "hot"))
+  (when current-prefix-arg
+    (setq subreddit (read-minibuffer "Sub-reddit: "))
+    (setq order (read-minibuffer "Order: " order)))
+  (let* ((buffer-name (reddit-build-buffer-name subreddit order))
+         (url (reddit-build-url "https" "www.reddit.com" subreddit order))
+         (parsed (url-generic-parse-url url))
+         (buffer (get-buffer-create buffer-name)))
+    (with-current-buffer buffer
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert "Loading...")
+        (switch-to-buffer (current-buffer))))
+    (url-https parsed #'reddit-handle-json (list #'reddit-render buffer subreddit order))))
+
+(defun reddit-goto-next-link-action ()
+  "Move the point forward to the next link action."
+  (interactive)
+  (message "Next link")
+  (let* ((next (next-single-property-change (point) 'link-action))
+         (nextnext (next-single-property-change next 'link-action)))
+    (if (get-text-property next 'link-action)
+        (goto-char next)
+      (when (get-text-property nextnext 'link-action)
+        (goto-char nextnext)))))
+
+
+(defun reddit-goto-next-article ()
+  "Move the point forward to the next article."
+  (interactive)
+  (let ((next (next-single-property-change (point) 'data)))
+    (when next
+      (goto-char next))))
+
+(defun reddit-goto-previous-article ()
+  "Move the point backward to the previous article."
+  (interactive)
+  (goto-char (previous-single-property-change (point) 'data nil (reddit-first-article-pos))))
+
+(defun reddit-open-comments ()
+  "Open the comments for the article at the point."
+  (interactive)
+  (reddit-comment-refresh (get-text-property (point) 'data)))
+
+(defun reddit-refresh ()
+  "Refresh this buffer."
+  (interactive)
+  (reddit reddit-subreddit reddit-order))
+
+(defun reddit-change-order ()
+  (interactive)
+  (let ((order (read-minibuffer "Order: " reddit-order)))
+    (reddit reddit-subreddit order)))
+
+(defun reddit-link-action ()
+  (interactive)
+  (let ((action (get-text-property (point) 'link-action)))
+    (when action
+      (apply action (get-text-property (point) 'data) nil))))
+
+
+;; Link actions
+
+(defun reddit-link-action-open (object)
+  (reddit-visit object)
+  (let ((region (reddit-find-article-title-region))
+        (inhibit-read-only t))
+    (add-text-properties (car region) (cdr region) (list 'face 'reddit-visited-face)))
+  (if current-prefix-arg
+      (start-process "open" "*Reddit Open*" "open" (reddit-get-data-item 'url object))
+    (cond
+     ((reddit-self-post-p object) (reddit-toggle-self-visibility))
+     (t (w3m (reddit-get-data-item 'url object))))))
+
+(defun reddit-link-action-open-url (object)
+  (let ((url (get-text-property (point) 'url)))
+    (if current-prefix-arg
+        (start-process "open" "*Reddit Open*" "open" url)
+      (w3m url))))
+
+(defun reddit-link-action-open-subreddit (object)
+  (reddit (reddit-get-data-item 'subreddit object)))
+
+;; Accessors
+
+(defun reddit-get-data (object)
+  "Extract the \"kind\" field from OBJECT."
+  (when object
+    (cdr (assoc 'data object))))
+
+(defun reddit-get-kind (object)
+  "Extract the \"kind\" field from OBJECT."
+  (when object
+    (cdr (assoc 'kind object))))
+
+(defun reddit-listing-p (object)
+  (when object
+    (string-equal "Listing" (reddit-get-kind object))))
+
+(defun reddit-listing-get-children (listing)
+  (cdr (assoc 'children (reddit-get-data listing))))
+
+(defun reddit-get-data-item (key object)
+  (let ((data (reddit-get-data object)))
+    (when data
+      (cdr (assoc key data)))))
+
+(defun reddit-get-subreddit (object)
+  (reddit-get-data-item 'subreddit object))
+
+(defun reddit-article-p (object)
+  "Is OBJECT a reddit article?"
+  (string-equal "t3" (reddit-get-kind object)))
+
+(defun reddit-comment-p (object)
+  "Is OBJECT a reddit comment"
+  (string-equal "t1" (reddit-get-kind object)))
+
+(defun reddit-more-p (object)
+  (string-equal "more" (reddit-get-kind object)))
+
+(defun reddit-self-post-p (object)
+  "Is OBJECT a self post."
+  (not (eq (reddit-get-data-item 'is_self object) :json-false)))
+
+;;; Rendering
+
+;; Tags
+(defun reddit-render-subreddit (object)
+  "Get the subreddit of OBJECT and propertize."
+  (assert (or (reddit-article-p object) (reddit-comment-p object)))
+  (propertize (format "/r/%s" (reddit-get-subreddit object))
               'link-action #'reddit-link-action-open-subreddit
               'face 'reddit-subreddit-face))
 
-(defun reddit-get-domain (elt)
-  "Get the link host of ELT and propertize."
-  (let ((domain (cdr (assoc 'domain elt))))
+(defun reddit-render-domain (article)
+  "Get the link host of ARTICLE and propertize."
+  (assert (reddit-article-p article))
+  (let ((domain (reddit-get-data-item 'domain article)))
     (propertize domain 'face 'reddit-host-face)))
 
-(defun reddit-get-nsfw (elt)
-  (let* ((over18 (cdr (assoc 'over_18 elt)))
+(defun reddit-render-nsfw (article)
+  (assert (reddit-article-p article))
+  (let* ((over18 (reddit-get-data-item 'over_18 article))
          (nsfw-p (not (equal over18 :json-false))))
     (when nsfw-p (propertize "NSFW" 'face 'reddit-nsfw-face))))
 
-(defun reddit-get-author (elt)
-  (let ((author (cdr (assoc 'author elt))))
+(defun reddit-render-author (object)
+  (assert (or (reddit-article-p object) (reddit-comment-p object)))
+  (let ((author (reddit-get-data-item 'author object)))
     (propertize (format "/u/%s" author) 'face 'reddit-deemphasized-face)))
 
-(defun reddit-get-time (elt)
+(defun reddit-render-time (object)
+  (assert (or (reddit-article-p object) (reddit-comment-p object)))
   (let* ((now (float-time))
-         (then (cdr (assoc 'created_utc elt)))
+         (then (reddit-get-data-item 'created_utc object))
          (time (round (- now then))))
 
     (propertize
@@ -104,85 +263,67 @@
         (t (format "%d seconds ago" seconds))))
      'face 'reddit-host-face)))
 
-(defun reddit-get-comments (elt)
-  (let ((comments (cdr (assoc 'num_comments elt))))
+(defun reddit-render-comment-count (article)
+  (assert (reddit-article-p article))
+  (let ((comments (reddit-get-data-item 'num_comments article)))
     (propertize (format "Comments: %d" comments) 'face 'reddit-host-face)))
 
-(defun reddit-get-votes (elt)
-  (let ((ups (cdr (assoc 'ups elt))))
-    (propertize (format "Votes: %s" ups) 'face 'reddit-host-face)))
+(defun reddit-render-up-count (object)
+  (assert (or (reddit-article-p object) (reddit-comment-p object)))
+  (let ((ups (reddit-get-data-item 'ups object)))
+    (propertize (format "UPs: %s" ups) 'face 'reddit-host-face)))
 
 (defun render-tags (elt &optional tags)
   (unless tags
-    (setq tags '(reddit-get-subreddit
-                 reddit-get-author
-                 reddit-get-time
-                 reddit-get-votes
-                 reddit-get-comments
-                 reddit-get-domain
-                 reddit-get-nsfw)))
+    (setq tags '(reddit-render-subreddit
+                 reddit-render-author
+                 reddit-render-time
+                 reddit-render-up-count
+                 reddit-render-comment-count
+                 reddit-render-domain
+                 reddit-render-nsfw)))
   (--each tags
     (let ((tag (apply it elt nil)))
       (when tag
         (insert (format " %s " tag)))))
   (insert "\n"))
 
-(defun render-title (elt)
-  (let ((title (reddit-sanitize-text (cdr (assoc 'title elt)))))
-    (with-text-properties (list 'face (if (reddit-visited-p elt)
+(defun render-title (article)
+  (assert (reddit-article-p article))
+  (let ((title (reddit-sanitize-text (reddit-get-data-item 'title article))))
+    (with-text-properties (list 'face (if (reddit-visited-p article)
                                           'reddit-visited-face
                                         'reddit-new-face)
                                 'subsection 'title
                                 'link-action #'reddit-link-action-open)
         (insert (format "%s\n" title)))))
 
-(defun reddit-replace-html-syms (sym)
-  (cond
-   ((string= "&lt;" sym) "<")
-   ((string= "&gt;" sym) ">")
-   (t sym)))
-
-(defvar reddit-hidden-selftext-text "...\n")
-
-(defun reddit-sanitize-text (text)
-  (replace-regexp-in-string "&[[:alpha:]]+;" #'reddit-replace-html-syms text))
-
-(defun render-self (elt &optional visible)
-  (let* ((selftext (cdr (assoc 'selftext elt)))
+(defun render-self (article &optional visible)
+  (assert (reddit-article-p article))
+  (let* ((selftext (reddit-get-data-item 'selftext article))
          (clean-selftext (reddit-sanitize-text selftext))
          (props (if visible (list 'subsection 'selftext
                                   'state 'visible)
                   (list 'display reddit-hidden-selftext-text
                                   'subsection 'selftext
                                   'state 'hidden))))
-    (when (reddit-self-post-p elt)
+    (when (reddit-self-post-p article)
       (with-text-properties props
           (insert (concat clean-selftext "\n"))))))
 
-(defun reddit-visited-p (elt)
-  (let ((id (cdr (assoc 'id elt))))
-    (member id reddit-visited-list)))
-
 (defun reddit-visit (elt)
-  (let ((id (cdr (assoc 'id elt))))
+  (assert (reddit-article-p elt))
+  (let ((id (reddit-get-data-item 'id elt)))
     (if (not (reddit-visited-p elt))
         (add-to-list 'reddit-visited-list id))))
 
-(defmacro with-text-properties (props &rest body)
-  (declare (indent 2))
-  `(let* ((start (point))
-          (result (progn
-                    ,@body))
-          (end (point)))
-     (add-text-properties start end ,props)
-     result))
-
-(defun reddit-render-article (data &optional selfvisible)
-  (with-text-properties (list 'article (cdr (assoc 'name data))
-                                'data data)
-        (render-title data)
-      (render-tags data)
-      (render-self data selfvisible)))
+(defun reddit-render-article (article &optional selfvisible)
+  (assert (reddit-article-p article))
+  (with-text-properties (list 'article (reddit-get-data-item 'name article)
+                              'data article)
+        (render-title article)
+      (render-tags article)
+      (render-self article selfvisible)))
 
 (defun reddit-draw-sections (data sections)
   (--each sections
@@ -196,14 +337,13 @@
     (insert (format " Updated: %s\n\n" (format-time-string "%a, %b %d %H:%M")))))
 
 
-(defun reddit-render-articles (data &optional selfvisible)
-  (setq reddit-last-received (cdr (assoc 'after (cdr (assoc 'data data)))))
+(defun reddit-render-articles (listing &optional selfvisible)
+  (setq reddit-last-received (reddit-get-data-item 'after listing))
   (with-text-properties '(section articles)
-    (let ((articles (cdr (assoc 'children (cdr (assoc 'data data))))))
+    (let ((articles (reddit-listing-get-children listing)))
       (setq reddit-received-count (+ reddit-received-count (length articles)))
       (mapc (lambda (it)
-              (let ((article-data (cdr (assoc 'data it))))
-                (reddit-render-article article-data selfvisible)))
+              (reddit-render-article it selfvisible))
             articles))))
 
 
@@ -230,6 +370,38 @@
       (reddit-goto-first-article))
     (switch-to-buffer (current-buffer))))
 
+;; What?
+
+(defun reddit-replace-html-syms (sym)
+  (cond
+   ((string= "&lt;" sym) "<")
+   ((string= "&gt;" sym) ">")
+   (t sym)))
+
+(defun reddit-make-link (text url)
+  (propertize (format "_%s_" text) 'url url 'link-action #'reddit-link-action-open-url))
+
+(defun reddit-propertize-links (text)
+  (while (string-match "\\[\\([^\]]*\\)\\](\\([^\)]*\\))" text)
+    (setq text (replace-match (reddit-make-link (match-string 1 text) (match-string 2 text)) nil nil text)))
+  text)
+
+(defun reddit-sanitize-text (text)
+  (let ((linked (reddit-propertize-links text)))
+    (replace-regexp-in-string "&[[:alpha:]]+;" #'reddit-replace-html-syms linked)))
+
+(defun reddit-visited-p (object)
+  (member (reddit-get-data-item 'id object) reddit-visited-list))
+
+(defmacro with-text-properties (props &rest body)
+  (declare (indent 2))
+  `(let* ((start (point))
+          (result (progn
+                    ,@body))
+          (end (point)))
+     (add-text-properties start end ,props)
+     result))
+
 (defun reddit-build-buffer-name (subreddit order)
   (if subreddit
       (format "*Reddit-%s*" subreddit)
@@ -251,28 +423,6 @@
            (concat "?" (reddit-build-query-string query)))))
     (concat type "://" host "/" path query-string)))
 
-(defun reddit (&optional subreddit order)
-  "Grab reddit summary."
-  (interactive)
-  (unless order
-    (setq order "hot"))
-  (when current-prefix-arg
-    (setq subreddit (read-minibuffer "Sub-reddit: "))
-    (setq order (read-minibuffer "Order: " order)))
-  (let* ((buffer-name (reddit-build-buffer-name subreddit order))
-         (url (reddit-build-url "https" "www.reddit.com" subreddit order))
-         (parsed (url-generic-parse-url url))
-         (buffer (get-buffer-create buffer-name)))
-    (with-current-buffer buffer
-      (let ((inhibit-read-only t))
-        (erase-buffer)
-        (insert "Loading...")
-        (switch-to-buffer (current-buffer))))
-    (url-https parsed #'reddit-handle-json (list #'reddit-render buffer subreddit order))))
-
-(defun reddit-self-post-p (elt)
-  (not (eq (cdr (assoc 'is_self elt)) :json-false)))
-
 (defun reddit-toggle-self-visibility ()
   (interactive)
   (let ((self-region (reddit-find-article-selftext-region)))
@@ -290,8 +440,6 @@
             (add-text-properties start end
                                  (list 'display reddit-hidden-selftext-text
                                        'state 'hidden))))))))
-
-;;; Link actions:
 
 (defun make-region (&optional start end)
   (cons (or start (point-min)) (or end (point-max))))
@@ -326,27 +474,6 @@
     (when article-region
       (reddit-find-property-region 'subsection 'selftext article-region))))
 
-(defun reddit-link-action-open (elt)
-  (reddit-visit elt)
-  (let ((region (reddit-find-article-title-region))
-        (inhibit-read-only t))
-    (add-text-properties (car region) (cdr region) (list 'face 'reddit-visited-face)))
-  (if current-prefix-arg
-      (start-process "open" "*Reddit Open*" "open" (cdr (assoc 'url elt)))
-  (cond
-   ((reddit-self-post-p elt) (reddit-toggle-self-visibility))
-   (t (w3m (cdr (assoc 'url elt)))))))
-
-(defun reddit-link-action-open-subreddit (elt)
-  (let ((subreddit (cdr (assoc 'subreddit elt))))
-    (reddit subreddit)))
-
-(defun reddit-link-action ()
-  (interactive)
-  (let ((action (get-text-property (point) 'link-action)))
-    (when action
-      (apply action (get-text-property (point) 'data) nil))))
-
 (defun reddit-next-action (&optional start)
   (interactive)
   (unless start
@@ -374,87 +501,9 @@
   (let ((end (reddit-end-of-articles-pos)))
     (when end (goto-char end))))
 
-(defun reddit-goto-next-article ()
-  (interactive)
-  (let ((next (next-single-property-change (point) 'data)))
-    (when next
-      (goto-char next))))
-
-(defun reddit-goto-previous-article ()
-  (interactive)
-  (goto-char (previous-single-property-change (point) 'data nil (reddit-first-article-pos))))
-
-(defun reddit-refresh ()
-  (interactive)
-  (reddit reddit-subreddit reddit-order))
-
-(defun reddit-change-order ()
-  (interactive)
-  (let ((order (read-minibuffer "Order: " reddit-order)))
-    (reddit reddit-subreddit order)))
-
 (defun reddit-unescape (str)
   (replace-regexp-in-string "\\/" "/" str))
 
-(defun reddit-render-comment (comment &optional indent)
-  (unless indent
-    (setq indent 0))
-  (let* ((data (cdr (assoc 'data comment)))
-         (comment_id (cdr (assoc 'name data))))
-    (with-text-properties (list 'comment comment_id)
-        (with-text-properties '(face reddit-comment-face)
-            (insert (format "%s\n" (cdr (assoc 'body data)))))
-        (with-text-properties '(face reddit-deemphasized-face)
-            (render-tags data '(reddit-get-author
-                                reddit-get-time
-                                reddit-get-votes))))))
-
-(defun reddit-comment-goto-next ()
-  (interactive)
-  (goto-char (or (next-single-property-change (point) 'comment) (point-max))))
-
-(defun reddit-comment-goto-previous ()
-  (interactive)
-  (goto-char (or (previous-single-property-change (point) 'comment) (point-min))))
-
-(defun reddit-render-comments (comments)
-  (let ((all (cdr (assoc 'children (cdr (assoc 'data comments))))))
-    (mapc #'reddit-render-comment all)))
-
-(defun reddit-handle-comments (data buffer-name)
-  (with-current-buffer (get-buffer-create buffer-name)
-    (let ((inhibit-read-only t))
-      (let ((articles (elt data 0))
-            (comments (elt data 1)))
-        (erase-buffer)
-        (reddit-render-articles articles t)
-        (reddit-render-comments comments)
-        (reddit-comment-mode)))
-    (goto-char 0)
-    (switch-to-buffer (current-buffer))))
-
-
-(defun reddit-open-comments ()
-  (interactive)
-  (let* ((data (get-text-property (point) 'data))
-         (permalink (reddit-unescape (cdr (assoc 'permalink data))))
-         (path (concat permalink ".json"))
-         (buffer-name (format "*Reddit-Comments-%s*" (cdr (assoc 'name data))))
-         (url (concat "https://www.reddit.com" path))
-         (parsed (url-generic-parse-url url))
-         (url-request-method "GET"))
-    (url-https parsed #'reddit-handle-json (list #'reddit-handle-comments buffer-name))))
-
-(defun reddit-comment-refresh ()
-  (interactive)
-  (let* ((data (get-text-property (point-min) 'data))
-         (permalink (reddit-unescape (cdr (assoc 'permalink data))))
-         (path (concat permalink ".json"))
-         (buffer-name (format "*Reddit-Comments-%s*" (cdr (assoc 'name data))))
-         (url (concat "https://www.reddit.com" path))
-         (parsed (url-generic-parse-url url))
-         (url-request-method "GET"))
-    (url-https parsed #'reddit-handle-json (list #'reddit-handle-comments buffer-name))))
 
 
 (defun reddit-render-more (data buffer-name)
@@ -481,27 +530,14 @@
          (url-reqeust-method "GET"))
     (url-https parsed #'reddit-handle-json (list #'reddit-render-more buffer-name))))
 
-
-(defvar reddit-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "SPC") #'reddit-link-action)
-    (define-key map (kbd "<return>") #'reddit-link-action)
-    (define-key map (kbd "<tab>") #'reddit-goto-next-article)
-    (define-key map (kbd "e") #'reddit-grab-more)
-    (define-key map (kbd "c") #'reddit-open-comments)
-    (define-key map (kbd "n") #'reddit-goto-next-article)
-    (define-key map (kbd "o") #'reddit-change-order)
-    (define-key map (kbd "p") #'reddit-goto-previous-article)
-    (define-key map (kbd "g") #'reddit-refresh)
-    map))
-
-(define-derived-mode reddit-mode special-mode "Reddit"
-  "Major mode for crushing it!"
-  (use-local-map reddit-mode-map)
-  (visual-line-mode t))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Reddit comments mode
 
 (defvar reddit-comment-mode-map
   (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "<return>") #'reddit-link-action)
+    (define-key map (kbd "SPC") #'reddit-link-action)
+    (define-key map (kbd "<tab>") #'reddit-goto-next-link-action)
     (define-key map (kbd "g") #'reddit-comment-refresh)
     (define-key map (kbd "n") #'reddit-comment-goto-next)
     (define-key map (kbd "p") #'reddit-comment-goto-previous)
@@ -512,6 +548,87 @@
   (use-local-map reddit-comment-mode-map)
   (visual-line-mode t))
 
+
+;;; Commands
+
+(defun reddit-comment-goto-next ()
+  "Move the point forward to the next comment."
+  (interactive)
+  (goto-char (or (next-single-property-change (point) 'comment) (point-max))))
+
+(defun reddit-comment-goto-previous ()
+  "Move the point backward to the previous comment."
+  (interactive)
+  (goto-char (or (previous-single-property-change (point) 'comment) (point-min))))
+
+(defun reddit-comment-refresh (&optional article)
+  (interactive)
+  (unless article
+    (setq article (get-text-property (point-min) 'data)))
+  (let* ((permalink (reddit-unescape (reddit-get-data-item 'permalink article)))
+         (path (concat permalink ".json"))
+         (buffer-name (format "*Reddit-Comments-%s*" (reddit-get-data-item 'name article)))
+         (url (concat "https://www.reddit.com" path))
+         (parsed (url-generic-parse-url url))
+         (url-request-method "GET"))
+    (url-https parsed #'reddit-handle-json (list #'reddit-handle-comments buffer-name))))
+
+;;; Rendering
+
+(defun reddit-build-indent (indent)
+  (let ((result ""))
+    (--dotimes indent
+      (setq result (concat result "| ")))
+  result))
+
+(defun reddit-render-hrule ()
+  (--dotimes 80
+    (insert "-"))
+  (insert "\n"))
+
+(defun reddit-render-comment (comment indent)
+  "Render COMMENT.  INDENT as needed."
+  (let ((indent-string (reddit-build-indent indent)))
+    (cond
+     ((reddit-comment-p comment)
+      (progn
+        (let ((comment_id (reddit-get-data-item 'name comment)))
+          (with-text-properties (list 'comment comment_id
+                                      'wrap-prefix indent-string
+                                      'line-prefix indent-string)
+              (insert (format "%s\n" (reddit-sanitize-text (reddit-get-data-item 'body comment))))
+            (with-text-properties '(face reddit-deemphasized-face)
+                (render-tags comment '(reddit-render-author
+                                       reddit-render-time
+                                       reddit-render-up-count)))))
+        (let ((replies (reddit-get-data-item 'replies comment)))
+          (when (not (stringp replies))
+            (reddit-render-comments replies (+ indent 1))))))
+     ((reddit-more-p comment)
+      (with-text-properties (list 'wrap-prefix indent-string
+                                  'line-prefix indent-string)
+          (insert "[more]\n"))))))
+
+(defun reddit-render-comments (listing indent)
+  "Render all comments in LISTING."
+  (let ((comments (reddit-listing-get-children listing)))
+    (mapc (lambda (comment) (reddit-render-comment comment indent)) comments)))
+
+;;; Received data handlers
+
+(defun reddit-handle-comments (data buffer-name)
+  "Handle the received comment DATA.  Put the results in a buffer called BUFFER-NAME."
+  (with-current-buffer (get-buffer-create buffer-name)
+    (let ((inhibit-read-only t))
+      (let ((articles (elt data 0))
+            (comments (elt data 1)))
+        (erase-buffer)
+        (reddit-render-articles articles t)
+        (reddit-render-hrule)
+        (reddit-render-comments comments 0)
+        (reddit-comment-mode)))
+    (goto-char 0)
+    (switch-to-buffer (current-buffer))))
 
 (provide 'reddit)
 ;;; reddit.el ends here
