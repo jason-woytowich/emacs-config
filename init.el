@@ -84,6 +84,7 @@
 (require 'key-config)
 (require 'copyright-config)
 (require 'window-config)
+(require 'reddit)
 
 (projectile-global-mode)
 
