@@ -5,7 +5,8 @@
 ;;; ToDo:
 ;;; - [ ] - Generalize the idea of sections
 ;;; - [ ] - Render targets
-;;; - [ ] - Create an imgur page
+;;; - [ ] - Load more comments
+
 
 ;;; Code:
 
@@ -23,14 +24,36 @@
   "COMMENT"
   :group 'reddit)
 
+(defface reddit-bold-face
+  '((t :weight bold))
+  "BOLD")
+
+(defface reddit-extrabold-face
+  '((t :weight ultrabold))
+  "EXTRA BOLD")
+
+(defface reddit-underline-face
+  '((t :underline t))
+  "BOLD")
+
 (defface reddit-highlight-face
   '((t :background "grey20"))
   "Highlight article"
   :group 'reddit)
 
 (defface reddit-visited-face
-  '((t :foreground "dark slate blue"))
+  '((t :foreground "slate blue"))
   "VISITED"
+  :group 'reddit)
+
+(defface reddit-interesting-face
+  '((t :foreground "dark slate blue"))
+  "INTERESTING"
+  :group 'reddit)
+
+(defface reddit-comment-author-face
+  '((t :foreground "magenta"))
+  "Reddit comment author"
   :group 'reddit)
 
 (defface reddit-nsfw-face
@@ -78,9 +101,23 @@
     (define-key map (kbd "g") #'reddit-refresh)
     map))
 
+(setq reddit-font-lock-defaults
+      '((("<[^>]+>" . 'reddit-deemphasized-face)
+         ("^* .*" . 'reddit-new-face)
+         ("^- .*" . 'reddit-visited-face)
+         ("NSFW" 0 'reddit-nsfw-face t)
+         ("\\[\\(\\w+\\)\\]" 1 'reddit-bold-face t)
+         ("\\*\\*[^*
+]+\\*\\*" 0 'reddit-extra-bold-face t)
+         ("\\*[^*
+]+\\*" 0 'reddit-bold-face t)
+         ("/\\(r\\|u\\)/[[:alnum:]-_]+" 0 'reddit-interesting-face t)
+         ) t))
+
 (define-derived-mode reddit-mode special-mode "Reddit"
   "Major mode for crushing it!"
   (use-local-map reddit-mode-map)
+  (setq font-lock-defaults reddit-font-lock-defaults)
   (visual-line-mode t))
 
 ;;; Commands
@@ -145,10 +182,10 @@
 
 (defun reddit-link-action ()
   (interactive)
-  (let ((action (get-text-property (point) 'link-action)))
+  (let ((action (get-text-property (point) 'link-action))
+        (args (get-text-property (point) 'link-action-args)))
     (when action
-      (apply action (get-text-property (point) 'data) nil))))
-
+      (apply action args))))
 
 ;; Link actions
 
@@ -160,17 +197,16 @@
   (if current-prefix-arg
       (start-process "open" "*Reddit Open*" "open" (reddit-get-data-item 'url object))
     (cond
-     ((reddit-self-post-p object) (reddit-toggle-self-visibility))
+     ((reddit-self-post-p object) (reddit-open-comments))
      (t (w3m (reddit-get-data-item 'url object))))))
 
-(defun reddit-link-action-open-url (object)
-  (let ((url (get-text-property (point) 'url)))
-    (if current-prefix-arg
-        (start-process "open" "*Reddit Open*" "open" url)
-      (w3m url))))
+(defun reddit-link-action-open-url (url)
+  (if current-prefix-arg
+      (start-process "open" "*Reddit Open*" "open" url)
+    (w3m url)))
 
-(defun reddit-link-action-open-subreddit (object)
-  (reddit (reddit-get-data-item 'subreddit object)))
+(defun reddit-link-action-open-subreddit (subreddit)
+  (reddit subreddit))
 
 ;; Accessors
 
@@ -220,26 +256,25 @@
 (defun reddit-render-subreddit (object)
   "Get the subreddit of OBJECT and propertize."
   (assert (or (reddit-article-p object) (reddit-comment-p object)))
-  (propertize (format "/r/%s" (reddit-get-subreddit object))
-              'link-action #'reddit-link-action-open-subreddit
-              'face 'reddit-subreddit-face))
+  (let ((subreddit (reddit-get-subreddit object)))
+    (propertize (format "/r/%s" subreddit)
+                'link-action #'reddit-link-action-open-subreddit
+                'link-action-args (list subreddit))))
 
 (defun reddit-render-domain (article)
   "Get the link host of ARTICLE and propertize."
   (assert (reddit-article-p article))
-  (let ((domain (reddit-get-data-item 'domain article)))
-    (propertize domain 'face 'reddit-host-face)))
+  (reddit-get-data-item 'domain article))
 
 (defun reddit-render-nsfw (article)
   (assert (reddit-article-p article))
   (let* ((over18 (reddit-get-data-item 'over_18 article))
          (nsfw-p (not (equal over18 :json-false))))
-    (when nsfw-p (propertize "NSFW" 'face 'reddit-nsfw-face))))
+    (when nsfw-p "NSFW")))
 
 (defun reddit-render-author (object)
   (assert (or (reddit-article-p object) (reddit-comment-p object)))
-  (let ((author (reddit-get-data-item 'author object)))
-    (propertize (format "/u/%s" author) 'face 'reddit-deemphasized-face)))
+  (format "/u/%s" (reddit-get-data-item 'author object)))
 
 (defun reddit-render-time (object)
   (assert (or (reddit-article-p object) (reddit-comment-p object)))
@@ -247,7 +282,6 @@
          (then (reddit-get-data-item 'created_utc object))
          (time (round (- now then))))
 
-    (propertize
      (let* ((seconds time)
             (minutes (/ seconds 60))
             (hours (/ minutes 60))
@@ -260,18 +294,16 @@
         ((> days 0) (format "%d days ago" days))
         ((> hours 0) (format "%d hours ago" hours))
         ((> minutes 0) (format "%d minutes ago" minutes))
-        (t (format "%d seconds ago" seconds))))
-     'face 'reddit-host-face)))
+        (t (format "%d seconds ago" seconds))))))
 
 (defun reddit-render-comment-count (article)
   (assert (reddit-article-p article))
   (let ((comments (reddit-get-data-item 'num_comments article)))
-    (propertize (format "Comments: %d" comments) 'face 'reddit-host-face)))
+    (format "Comments: %d" comments)))
 
 (defun reddit-render-up-count (object)
   (assert (or (reddit-article-p object) (reddit-comment-p object)))
-  (let ((ups (reddit-get-data-item 'ups object)))
-    (propertize (format "UPs: %s" ups) 'face 'reddit-host-face)))
+  (format "UPs: %s" (reddit-get-data-item 'ups object)))
 
 (defun render-tags (elt &optional tags)
   (unless tags
@@ -285,30 +317,24 @@
   (--each tags
     (let ((tag (apply it elt nil)))
       (when tag
-        (insert (format " %s " tag)))))
+        (insert (format "<%s>" tag)))))
   (insert "\n"))
 
 (defun render-title (article)
   (assert (reddit-article-p article))
-  (let ((title (reddit-sanitize-text (reddit-get-data-item 'title article))))
-    (with-text-properties (list 'face (if (reddit-visited-p article)
-                                          'reddit-visited-face
-                                        'reddit-new-face)
-                                'subsection 'title
-                                'link-action #'reddit-link-action-open)
-        (insert (format "%s\n" title)))))
+  (let ((title (reddit-sanitize-text (reddit-get-data-item 'title article)))
+        (visited (reddit-visited-p article)))
+    (with-text-properties (list 'subsection 'title
+                                'link-action #'reddit-link-action-open
+                                'link-action-args (list article))
+        (insert (format "%s %s\n" (if visited "-" "*") title)))))
 
 (defun render-self (article &optional visible)
   (assert (reddit-article-p article))
   (let* ((selftext (reddit-get-data-item 'selftext article))
-         (clean-selftext (reddit-sanitize-text selftext))
-         (props (if visible (list 'subsection 'selftext
-                                  'state 'visible)
-                  (list 'display reddit-hidden-selftext-text
-                                  'subsection 'selftext
-                                  'state 'hidden))))
-    (when (reddit-self-post-p article)
-      (with-text-properties props
+         (clean-selftext (reddit-sanitize-text selftext)))
+    (when (and visible (reddit-self-post-p article))
+      (with-text-properties (list 'subsection 'selftext)
           (insert (concat clean-selftext "\n"))))))
 
 (defun reddit-visit (elt)
@@ -330,12 +356,11 @@
     (apply it (list data))))
 
 (defun reddit-header (data)
-  (with-text-properties '(face reddit-deemphasized-face section header)
+  (with-text-properties '(section header)
       (if reddit-subreddit
-          (insert (format "/r/%s/%s" reddit-subreddit reddit-order))
-        (insert (format "Reddit/%s" reddit-order)))
-    (insert (format " Updated: %s\n\n" (format-time-string "%a, %b %d %H:%M")))))
-
+          (insert (format "</r/%s/%s>" reddit-subreddit reddit-order))
+        (insert (format "</%s>" reddit-order)))
+    (insert (format "<Updated: %s>\n\n" (format-time-string "%a, %b %d %H:%M")))))
 
 (defun reddit-render-articles (listing &optional selfvisible)
   (setq reddit-last-received (reddit-get-data-item 'after listing))
@@ -346,12 +371,9 @@
               (reddit-render-article it selfvisible))
             articles))))
 
-
 (defun reddit-footer (data)
-  (with-text-properties '(face reddit-deemphasized-face
-                          section footer)
-      (insert "\nPress 'e' to load more article\n")))
-
+  (with-text-properties '(section footer)
+      (insert "\n<Press 'e' to load more article>\n")))
 
 (defvar reddit-sections '(reddit-header
                           reddit-render-articles
@@ -370,16 +392,17 @@
       (reddit-goto-first-article))
     (switch-to-buffer (current-buffer))))
 
-;; What?
-
 (defun reddit-replace-html-syms (sym)
   (cond
    ((string= "&lt;" sym) "<")
    ((string= "&gt;" sym) ">")
+   ((string= "&amp;" sym) "&")
    (t sym)))
 
 (defun reddit-make-link (text url)
-  (propertize (format "_%s_" text) 'url url 'link-action #'reddit-link-action-open-url))
+  (propertize (format "_%s_" text)
+              'link-action #'reddit-link-action-open-url
+              'link-action-args (list url)))
 
 (defun reddit-propertize-links (text)
   (while (string-match "\\[\\([^\]]*\\)\\](\\([^\)]*\\))" text)
@@ -422,24 +445,6 @@
          (when query
            (concat "?" (reddit-build-query-string query)))))
     (concat type "://" host "/" path query-string)))
-
-(defun reddit-toggle-self-visibility ()
-  (interactive)
-  (let ((self-region (reddit-find-article-selftext-region)))
-    (when self-region
-      (let* ((start (car self-region))
-             (end (cdr self-region))
-             (hidden (equal 'hidden (get-text-property start 'state)))
-             (inhibit-read-only t))
-        (if hidden
-            (progn
-              (remove-text-properties start end '(display))
-              (add-text-properties start end
-                                 (list 'state 'visible)))
-          (progn
-            (add-text-properties start end
-                                 (list 'display reddit-hidden-selftext-text
-                                       'state 'hidden))))))))
 
 (defun make-region (&optional start end)
   (cons (or start (point-min)) (or end (point-max))))
@@ -541,12 +546,18 @@
     (define-key map (kbd "g") #'reddit-comment-refresh)
     (define-key map (kbd "n") #'reddit-comment-goto-next)
     (define-key map (kbd "p") #'reddit-comment-goto-previous)
+    (define-key map (kbd "f") #'reddit-comment-go-forward)
+    (define-key map (kbd "b") #'reddit-comment-go-backward)
     map))
 
-(define-derived-mode reddit-comment-mode special-mode "Comments"
+(define-derived-mode reddit-comment-mode special-mode "Reddit-Comments"
   "Major mode for crushing it!"
   (use-local-map reddit-comment-mode-map)
-  (visual-line-mode t))
+  (setq font-lock-defaults reddit-font-lock-defaults)
+  (visual-line-mode t)
+  (let ((author (reddit-get-data-item 'author (get-text-property (point-min) 'data))))
+    (font-lock-add-keywords 'reddit-comment-mode
+                            `((,(concat "/u/" author) 0 'reddit-comment-author-face t)) t)))
 
 
 ;;; Commands
@@ -560,6 +571,11 @@
   "Move the point backward to the previous comment."
   (interactive)
   (goto-char (or (previous-single-property-change (point) 'comment) (point-min))))
+
+
+(defun reddit-comment-go-backward ()
+  (interactive)
+  (reddit-comment-goto-previous))
 
 (defun reddit-comment-refresh (&optional article)
   (interactive)
@@ -582,9 +598,10 @@
   result))
 
 (defun reddit-render-hrule ()
+  (insert "<")
   (--dotimes 80
     (insert "-"))
-  (insert "\n"))
+  (insert ">\n"))
 
 (defun reddit-render-comment (comment indent)
   "Render COMMENT.  INDENT as needed."
@@ -594,19 +611,20 @@
       (progn
         (let ((comment_id (reddit-get-data-item 'name comment)))
           (with-text-properties (list 'comment comment_id
+                                      'indent indent
                                       'wrap-prefix indent-string
                                       'line-prefix indent-string)
               (insert (format "%s\n" (reddit-sanitize-text (reddit-get-data-item 'body comment))))
-            (with-text-properties '(face reddit-deemphasized-face)
-                (render-tags comment '(reddit-render-author
-                                       reddit-render-time
-                                       reddit-render-up-count)))))
+            (render-tags comment '(reddit-render-author
+                                   reddit-render-time
+                                   reddit-render-up-count))))
         (let ((replies (reddit-get-data-item 'replies comment)))
           (when (not (stringp replies))
             (reddit-render-comments replies (+ indent 1))))))
      ((reddit-more-p comment)
       (with-text-properties (list 'wrap-prefix indent-string
-                                  'line-prefix indent-string)
+                                  'line-prefix indent-string
+                                  'indent indent)
           (insert "[more]\n"))))))
 
 (defun reddit-render-comments (listing indent)
