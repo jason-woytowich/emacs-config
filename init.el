@@ -66,6 +66,7 @@
 
 (add-hook 'prog-mode-hook 'whitespace-mode t)
 (add-hook 'prog-mode-hook 'which-func-mode t)
+
 (add-hook 'before-save-hook 'delete-trailing-whitespace t)
 
 (require 'git-gutter-fringe+)
@@ -85,6 +86,9 @@
 (require 'copyright-config)
 (require 'window-config)
 (require 'reddit)
+(require 'plv)
+
+(add-hook 'prog-mode-hook 'plv-hook t)
 
 (projectile-global-mode)
 
