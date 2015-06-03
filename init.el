@@ -75,7 +75,6 @@
 (require 'org-config)
 (require 'deft-config)
 (require 'magit-config)
-(require 'projectile)
 
 (require 'ido-config)
 (require 'c-config)
@@ -85,14 +84,15 @@
 (require 'key-config)
 (require 'copyright-config)
 (require 'window-config)
+(require 'eshell-config)
+(require 'projectile-config)
 (require 'reddit)
 (require 'plv)
 
 (add-hook 'prog-mode-hook 'plv-hook t)
 
-(projectile-global-mode)
-
 (defvar local-emacs-dir "~/EmacsLocal/")
+
 
 (dolist (file (directory-files local-emacs-dir t "\.el$"))
   (message file)
