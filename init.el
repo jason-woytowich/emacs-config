@@ -28,7 +28,7 @@
     org
     flycheck
     magit
-    ace-jump-mode
+    avy
     yaml-mode
     git-gutter-fringe+
     projectile

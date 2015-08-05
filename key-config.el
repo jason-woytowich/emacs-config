@@ -7,7 +7,7 @@
 (require 'projectile)
 (require 'dash-at-point)
 (require 'nose)
-(require 'ace-jump-mode)
+(require 'avy)
 
 ;;; OSX keybindings
 (setq mac-command-modifier 'meta)
@@ -21,7 +21,7 @@
 
 (global-set-key (kbd "C-c d") 'dash-at-point)
 (global-set-key (kbd "C-c o") 'open-at-point)
-(global-set-key (kbd "C-c j") 'ace-jump-mode)
+(global-set-key (kbd "C-c j") 'avy-goto-word-1)
 (define-key projectile-mode-map (kbd "C-c p a") 'projectile-ag)
 
 ; Python settings
