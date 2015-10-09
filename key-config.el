@@ -43,5 +43,8 @@
 ; Elisp settings
 (define-key emacs-lisp-mode-map (kbd "C-c a") 'ert-all)
 
+; use iBuffer
+(global-set-key (kbd "C-x C-b") 'ibuffer)
+
 (provide 'key-config)
 ;;; key-config.el ends here
