@@ -58,7 +58,8 @@
 
 (defun open-at-point ()
   (interactive)
-  (let ((url (thing-at-point 'url)))
+  (let ((url (or (dired-get-filename)
+                 (thing-at-point 'url))))
     (message url)
     (start-process "*Open-At-Point*" nil "open" url)))
 
