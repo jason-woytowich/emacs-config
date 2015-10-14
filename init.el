@@ -23,6 +23,7 @@
     smartparens
     pretty-lambdada
     ido-ubiquitous
+    smex
     exec-path-from-shell
     deft
     org

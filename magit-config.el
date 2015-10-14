@@ -7,7 +7,8 @@
 
 (setq
  magit-last-seen-setup-instructions "1.4.0"
- magit-use-overlays nil)
+ magit-use-overlays nil
+ magit-completing-read-function #'magit-ido-completing-read)
 
 
 (defadvice magit-status (around magit-fullscreen activate)

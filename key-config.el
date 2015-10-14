@@ -7,6 +7,7 @@
 (require 'projectile)
 (require 'dash-at-point)
 (require 'nose)
+(require 'smex)
 (require 'avy)
 
 ;;; OSX keybindings
@@ -19,10 +20,14 @@
 (global-set-key (kbd "<f11>") 'org-agenda)
 (global-set-key (kbd "<f12>") 'org-capture)
 
+(global-set-key (kbd "C-c j") 'avy-goto-word-1)
+
 (global-set-key (kbd "C-c d") 'dash-at-point)
 (global-set-key (kbd "C-c o") 'open-at-point)
 (global-set-key (kbd "C-c j") 'avy-goto-word-1)
 (define-key projectile-mode-map (kbd "C-c p a") 'projectile-ag)
+(global-set-key (kbd "M-x") #'smex)
+(global-set-key (kbd "M-X") #'smex-major-mode-commands)
 
 ; Python settings
 (require 'python)
