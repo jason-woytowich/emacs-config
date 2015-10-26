@@ -91,9 +91,6 @@
 (require 'eshell-config)
 (require 'projectile-config)
 (require 'reddit)
-(require 'plv)
-
-(add-hook 'prog-mode-hook 'plv-hook t)
 
 (defvar local-emacs-dir "~/EmacsLocal/")
 
