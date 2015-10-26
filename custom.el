@@ -25,7 +25,6 @@
  '(global-hl-line-mode t)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
- '(magit-use-overlays nil)
  '(make-backup-files nil)
  '(projectile-cache-file "/Users/jwoytowich/.emacs.d/cache/projectile.cache")
  '(projectile-known-projects-file "/Users/jwoytowich/.emacs.d/cache/projectile-bookmarks.eld")
