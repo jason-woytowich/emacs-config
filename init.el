@@ -52,6 +52,8 @@
   (dolist (file (directory-files elpa-directory))
     (add-to-list 'load-path (concat elpa-directory file))))
 
+(setq Info-additional-directory-list '("/opt/local/share/info"))
+
 (fset 'yes-or-no-p 'y-or-n-p)
 
 (require 'exec-path-from-shell)
