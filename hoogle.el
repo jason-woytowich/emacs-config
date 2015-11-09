@@ -34,6 +34,13 @@
   (let ((link (cdr (assoc 'location data))))
     (start-process "open" "*Hoogle Open*" "open" link)))
 
+(defun hoogle-results-package (data)
+  (let* ((location (cdr (assoc 'location data)))
+         (docstart (string-match "\/\\([A-Za-z0-9-]+\\)\\.html" location))
+         (name     (match-string 1 location))
+         (path     (split-string name "-")))
+       (string-join path ".")))
+
 (defun hgl (query)
   "Run a search for the given QUERY."
   (interactive "sSearch: ")
@@ -48,9 +55,10 @@
       (vector-each (hoogle-search query)
                    (let ((self (cdr (assoc 'self it)))
                          (docs (cdr (assoc 'docs it)))
-                         (loc (cdr (assoc 'location it))))
+                         (loc (cdr (assoc 'location it)))
+                         (package (hoogle-results-package it)))
                      (with-text-properties (list 'data it 'action #'hoogle-open-location)
-                         (insert (format "%s\n" self)))))
+                         (insert (format "%s [%s]\n" self package)))))
       (goto-char pos))))
 
 
