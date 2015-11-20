@@ -58,7 +58,16 @@
                          (loc (cdr (assoc 'location it)))
                          (package (hoogle-results-package it)))
                      (with-text-properties (list 'data it 'action #'hoogle-open-location)
-                         (insert (format "%s [%s]\n" self package)))))
+                         (insert (format "- %s\n" (fontify-as-mode self 'haskell-mode)))
+                       (with-text-properties (list 'face 'hoogle-package-face)
+                           (insert (format "  %s\n" package)))
+                       (with-text-properties (list 'face 'hoogle-description-face
+                                                   'indent 4
+                                                   'wrap-prefix "    "
+                                                   'line-prefix "    ")
+
+                           (insert (format "%s\n" docs))))))
+
       (goto-char pos))))
 
 
@@ -70,18 +79,52 @@
     (apply action data nil)))
 
 (defun hoogle-goto-next ()
-  (interactive))
+  (interactive)
+  (let ((next (next-single-property-change (point) 'data nil (point-max))))
+    (goto-char next)))
+
+(defun hoogle-goto-prev ()
+  (interactive)
+  (let ((prev (previous-single-property-change (point) 'data nil (point-min))))
+    (goto-char prev)))
+
+(defun fontify-as-mode (text mode)
+  "Fontify TEXT as MODE, returning the fontified text."
+  (with-temp-buffer
+    (funcall mode)
+    (insert text)
+    (if (fboundp 'font-lock-ensure)
+        (font-lock-ensure)
+      (with-no-warnings (font-lock-fontify-buffer)))
+    (buffer-substring (point-min) (point-max))))
 
 (defvar hoogle-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "SPC") #'hoogle-link-action)
     (define-key map (kbd "<return>") #'hoogle-link-action)
     (define-key map (kbd "<tab>") #'hoogle-goto-next)
+    (define-key map (kbd "n") #'hoogle-goto-next)
+    (define-key map (kbd "p") #'hoogle-goto-prev)
     map))
+
+(defface hoogle-package-face
+  '((t :foreground "grey30"))
+  "Hoogle package name face"
+  :group 'hoogle)
+
+(defface hoogle-description-face
+  '((t :height 90 :foreground "grey30"))
+  "Hoogle function documentation face"
+  :group 'hoogle)
+
+(setq hoogle-font-lock-defaults
+      '((("<[a-zA-Z0-9.]+>" 0 'hoogle-package-face t)
+         ) t))
 
 (define-derived-mode hoogle-mode special-mode "Hoogle"
   "Major mode for crushing it!"
   (use-local-map hoogle-mode-map)
+;  (setq font-lock-defaults hoogle-font-lock-defaults)
   (visual-line-mode t))
 
 (provide 'hoogle)
