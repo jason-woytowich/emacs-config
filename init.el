@@ -73,6 +73,7 @@
 
 (add-hook 'before-save-hook 'delete-trailing-whitespace t)
 
+(require 'jasons-helpers)
 (require 'git-gutter-fringe+)
 
 (require 'theme-config)
