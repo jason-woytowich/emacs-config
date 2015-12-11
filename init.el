@@ -33,6 +33,7 @@
     yaml-mode
     git-gutter-fringe+
     projectile
+    atom-dark-theme
     zenburn-theme
     monokai-theme))
 
@@ -69,7 +70,6 @@
 (server-start)
 
 (add-hook 'prog-mode-hook 'whitespace-mode t)
-(add-hook 'prog-mode-hook 'which-func-mode t)
 
 (add-hook 'before-save-hook 'delete-trailing-whitespace t)
 

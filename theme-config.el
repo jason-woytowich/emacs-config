@@ -3,7 +3,7 @@
 ;;; Commentary:
 
 ;;; Code:
-(require 'monokai-theme)
+(require 'atom-dark-theme)
 
 (line-number-mode t)
 (column-number-mode t)
