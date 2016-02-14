@@ -28,6 +28,7 @@
  '(global-git-gutter+-mode t)
  '(global-hl-line-mode t)
  '(hexl-bits 8)
+ '(ring-bell-function #'ignore)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
  '(magit-git-debug nil)
