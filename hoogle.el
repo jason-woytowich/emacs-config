@@ -5,7 +5,6 @@
 ;;; Code:
 
 (require 'json)
-(require 'dash)
 
 (defmacro with-text-properties (props &rest body)
   (declare (indent 2))

@@ -12,7 +12,6 @@
 
 (require 'json)
 (require 'url-http)
-(require 'dash)
 
 (defface reddit-new-face
   '((t :foreground "cornflower blue" :weight bold))

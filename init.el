@@ -1,41 +1,20 @@
 ;;; init -- Starting point of my emacs config
 ;;; Commentary:
 ;;; Code:
+;;; Todo:
+;;;  [ ] - Dash?
 
 (require 'package)
 
-(setq
- custom-file (expand-file-name "~/.emacs.d/custom.el"))
-
-(load-file custom-file)
+; Load custom file
+(load-file (expand-file-name "~/.emacs.d/custom.el"))
 
 (defvar required-packages
-  `(dash
-    dash-at-point
-    ag
+  `(use-package
     nose
     jedi
-    flycheck-pyflakes
-    flycheck-haskell
-    haskell-mode
-    dot-mode
-    markdown-mode
     smartparens
-    pretty-lambdada
-    ido-ubiquitous
-    smex
-    exec-path-from-shell
-    deft
-    org
-    flycheck
-    magit
-    avy
-    yaml-mode
-    git-gutter-fringe+
-    projectile
-    atom-dark-theme
-    zenburn-theme
-    monokai-theme))
+    projectile))
 
 (defun check-required-packages ()
   (dolist (package required-packages)
@@ -57,8 +36,96 @@
 
 (fset 'yes-or-no-p 'y-or-n-p)
 
-(require 'exec-path-from-shell)
-(exec-path-from-shell-initialize)
+(use-package ag :ensure)
+(use-package dot-mode :ensure)
+(use-package yaml-mode :ensure)
+(use-package pretty-lambdada)
+(use-package flycheck-pyflakes :ensure)
+
+(use-package smex
+  :ensure
+  :bind ("M-x" . smex)
+  :bind ("M-X" . smex-major-mode-commands))
+
+(use-package avy
+  :ensure
+  :bind ("C-c j" . avy-goto-word-1))
+
+(use-package deft
+  :ensure
+  :bind ("<f10>" . deft)
+  :config (setq deft-directory (expand-file-name "~/org")
+                deft-default-extension "org"
+                deft-text-mode 'org-mode
+                deft-auto-save-interval 0.0))
+
+(use-package exec-path-from-shell
+  :ensure
+  :demand
+  :preface (exec-path-from-shell-initialize))
+
+(use-package ido-ubiquitous
+  :ensure
+  :preface (progn (ido-mode)
+                  (ido-ubiquitous-mode)))
+
+(use-package flycheck :ensure)
+
+(use-package flycheck-haskell :ensure)
+(use-package git-gutter-fringe+ :ensure :demand)
+
+(use-package haskell-mode
+  :ensure
+  :bind-keymap ("C-c v c" . haskell-cabal-visit-file)
+  :config (progn (add-hook 'haskell-mode-hook 'interactive-haskell-mode)
+                 (add-hook 'haskell-mode-hook 'haskell-doc-mode)
+                 (add-hook 'haskell-mode-hook 'flycheck-mode)
+                 (add-hook 'haskell-mode-hook 'flycheck-haskell-setup)))
+
+(use-package magit
+  :ensure
+  :bind ("<f9>" . magit-status)
+  :config (progn (setq magit-last-seen-setup-instructions "1.4.0"
+                       magit-use-overlays nil
+                       magit-completing-read-function #'magit-ido-completing-read
+                       magit-diff-arguments '("--ignore-all-space")
+                       magit-git-debug t)
+                 (defadvice magit-status (around magit-fullscreen activate)
+                   (window-configuration-to-register :magit-fullscreen)
+                   ad-do-it
+                   (delete-other-windows))
+                 (defadvice magit-mode-quit-window (after magit-restore-screen activate)
+                   (jump-to-register :magit-fullscreen))))
+
+(use-package org
+  :ensure
+  :bind ("<f11>" . org-agenda)
+  :bind ("<f12>" . org-capture)
+  :config (progn (setq org-agenda-files '("~/org/")
+                       org-default-notes-file "~/org/notes.org"
+                       org-src-fontify-natively t
+                       org-babel-load-languages (quote
+                                                 ((python . t)
+                                                  (dot . t)
+                                                  (emacs-lisp . t)
+                                                  (calc . t)))
+                       org-confirm-babel-evaluate nil
+                       org-src-lang-modes (quote
+                                           (("ocaml" . tuareg)
+                                            ("elisp" . emacs-lisp)
+                                            ("ditaa" . artist)
+                                            ("asymptote" . asy)
+                                            ("dot" . graphviz-dot)
+                                            ("sqlite" . sql)
+                                            ("calc" . fundamental)
+                                            ("C" . c)
+                                            ("cpp" . c++)
+                                            ("C++" . c++)
+                                            ("screen" . shell-script)
+                                            ("python" . python)))
+                       org-capture-templates '(("t" "Default" entry (file+headline "~/org/todo.org" "Tasks") "** TODO %?\n  %T")
+                                               ("c" "Code review item" entry (file+headline "~/org/code-review.org" "Comments") "** TODO %?\n  %T\n  %l")))
+                 (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images)))
 
 (defun open-at-point ()
   (interactive)
@@ -66,7 +133,16 @@
                  (thing-at-point 'url))))
     (message url)
     (start-process "*Open-At-Point*" nil "open" url)))
+(global-set-key (kbd "C-c o") 'open-at-point)
 
+
+(use-package atom-dark-theme :ensure)
+
+(line-number-mode t)
+(column-number-mode t)
+(size-indication-mode t)
+(scroll-bar-mode 0)
+(tool-bar-mode 0)
 (server-start)
 
 (add-hook 'prog-mode-hook 'whitespace-mode t)
@@ -74,18 +150,10 @@
 (add-hook 'before-save-hook 'delete-trailing-whitespace t)
 
 (require 'jasons-helpers)
-(require 'git-gutter-fringe+)
 
-(require 'theme-config)
-(require 'org-config)
-(require 'deft-config)
-(require 'magit-config)
-
-(require 'ido-config)
 (require 'c-config)
 (require 'python-config)
 (require 'lisp-config)
-(require 'haskell-config)
 (require 'key-config)
 (require 'copyright-config)
 (require 'window-config)

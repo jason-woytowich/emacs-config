@@ -2,32 +2,16 @@
 ;;; Commentary:
 ;;; Code:
 
-(require 'org)
-(require 'magit)
+
 (require 'projectile)
-(require 'dash-at-point)
 (require 'nose)
-(require 'smex)
 (require 'avy)
 
 ;;; OSX keybindings
 (setq mac-command-modifier 'meta)
 (setq mac-option-modifier 'super)
 
-; 'fn' shortcuts
-(global-set-key (kbd "<f9>") 'magit-status)
-(global-set-key (kbd "<f10>") 'deft)
-(global-set-key (kbd "<f11>") 'org-agenda)
-(global-set-key (kbd "<f12>") 'org-capture)
-
-(global-set-key (kbd "C-c j") 'avy-goto-word-1)
-
-(global-set-key (kbd "C-c d") 'dash-at-point)
-(global-set-key (kbd "C-c o") 'open-at-point)
-(global-set-key (kbd "C-c j") 'avy-goto-word-1)
 (define-key projectile-mode-map (kbd "C-c p a") 'projectile-ag)
-(global-set-key (kbd "M-x") #'smex)
-(global-set-key (kbd "M-X") #'smex-major-mode-commands)
 
 ; Python settings
 (require 'python)
