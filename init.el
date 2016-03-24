@@ -36,6 +36,14 @@
 
 (fset 'yes-or-no-p 'y-or-n-p)
 
+(defun handle-large-files ()
+  (when (> (buffer-size) (* 1024 1024))
+    (setq buffer-read-only t)
+    (buffer-disable-undo)
+    (fundamental-mode)))
+
+(add-hook 'find-file-hook 'handle-large-files)
+
 (use-package ag :ensure)
 (use-package dot-mode :ensure)
 (use-package yaml-mode :ensure)
