@@ -97,35 +97,39 @@
                  (defadvice magit-mode-quit-window (after magit-restore-screen activate)
                    (jump-to-register :magit-fullscreen))))
 
-(use-package org
-  :ensure
-  :bind ("<f11>" . org-agenda)
-  :bind ("<f12>" . org-capture)
-  :config (progn (setq org-agenda-files '("~/org/")
-                       org-default-notes-file "~/org/notes.org"
-                       org-src-fontify-natively t
-                       org-babel-load-languages (quote
-                                                 ((python . t)
-                                                  (dot . t)
-                                                  (emacs-lisp . t)
-                                                  (calc . t)))
-                       org-confirm-babel-evaluate nil
-                       org-src-lang-modes (quote
-                                           (("ocaml" . tuareg)
-                                            ("elisp" . emacs-lisp)
-                                            ("ditaa" . artist)
-                                            ("asymptote" . asy)
-                                            ("dot" . graphviz-dot)
-                                            ("sqlite" . sql)
-                                            ("calc" . fundamental)
-                                            ("C" . c)
-                                            ("cpp" . c++)
-                                            ("C++" . c++)
-                                            ("screen" . shell-script)
-                                            ("python" . python)))
-                       org-capture-templates '(("t" "Default" entry (file+headline "~/org/todo.org" "Tasks") "** TODO %?\n  %T")
-                                               ("c" "Code review item" entry (file+headline "~/org/code-review.org" "Comments") "** TODO %?\n  %T\n  %l")))
-                 (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images)))
+
+(let ((local-org-dir "~/org/")
+      (mobile-org-dir "~/Library/Mobile Documents/com~apple~CloundDocs/org/"))
+  (use-package org
+    :ensure
+    :bind ("C-c a" . org-agenda)
+    :bind ("C-c c" . org-capture)
+    :config (progn (setq org-agenda-files (list local-org-dir mobile-org-dir)
+                         org-default-notes-file (expand-file-name "master.org" mobile-org-dir)
+                         org-src-fontify-natively t
+                         org-babel-load-languages (quote
+                                                   ((python . t)
+                                                    (dot . t)
+                                                    (emacs-lisp . t)
+                                                    (calc . t)))
+                         org-confirm-babel-evaluate nil
+                         org-src-lang-modes (quote
+                                             (("ocaml" . tuareg)
+                                              ("elisp" . emacs-lisp)
+                                              ("ditaa" . artist)
+                                              ("asymptote" . asy)
+                                              ("dot" . graphviz-dot)
+                                              ("sqlite" . sql)
+                                              ("calc" . fundamental)
+                                              ("C" . c)
+                                              ("cpp" . c++)
+                                              ("C++" . c++)
+                                              ("screen" . shell-script)
+                                              ("python" . python)))
+                         org-log-into-drawer "LOGBOOK"
+                         org-capture-templates '(("n" "New task" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - Created %U\n   :END:")
+                                                 ("N" "New task - Clock In" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - CREATED %U\n   :END:" :clock-in t)))
+                   (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images))))
 
 (defun open-at-point ()
   (interactive)
@@ -171,3 +175,4 @@
 (provide 'init)
 
 ;;; init.el ends here
+(put 'upcase-region 'disabled nil)

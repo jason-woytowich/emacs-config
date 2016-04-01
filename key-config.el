@@ -16,21 +16,15 @@
 ; Python settings
 (require 'python)
 
-(dolist (key-pair `(("C-c a" nosetests-all)
-		    ("C-c m" nosetests-module)
+(dolist (key-pair `(("C-c m" nosetests-module)
 		    ("C-c ." nosetests-one)
 		    ("C-c p a" nosetests-pdb-all)
 		    ("C-c p m" nosetests-pdb-module)
 		    ("C-c p ." nosetests-pdb-one)
-		    ("C-c c" comment-region)
 		    ("C-u C-c c" uncomment-region)))
   (let ((key (car key-pair))
 	(action (cadr key-pair)))
     (define-key python-mode-map (kbd key) action)))
-
-
-; Elisp settings
-(define-key emacs-lisp-mode-map (kbd "C-c a") 'ert-all)
 
 ; use iBuffer
 (global-set-key (kbd "C-x C-b") 'ibuffer)
