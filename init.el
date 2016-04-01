@@ -128,7 +128,9 @@
                                               ("python" . python)))
                          org-log-into-drawer "LOGBOOK"
                          org-capture-templates '(("n" "New task" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - Created %U\n   :END:")
-                                                 ("N" "New task - Clock In" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - CREATED %U\n   :END:" :clock-in t)))
+                                                 ("N" "New task - Clock In" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - CREATED %U\n   :END:" :clock-in t)
+                                                 ("r" "New review" entry (file+headline org-default-notes-file "Tasks") "** REVIEWING %?\n   :LOGBOOK:\n   - CREATED %U\n   :END:")
+                                                 ("c" "Comment" plain (clock) " - [ ] %?\n%a")))
                    (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images))))
 
 (defun open-at-point ()
