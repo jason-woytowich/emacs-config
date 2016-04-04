@@ -106,14 +106,14 @@
                    (jump-to-register :magit-fullscreen))))
 
 
-(let ((local-org-dir "~/org/")
-      (mobile-org-dir "~/Library/Mobile Documents/com~apple~CloundDocs/org/"))
+(let ((local-org-dir "~/org/"))
   (use-package org
     :ensure
+    :demand
     :bind ("C-c a" . org-agenda)
     :bind ("C-c c" . org-capture)
-    :config (progn (setq org-agenda-files (list local-org-dir mobile-org-dir)
-                         org-default-notes-file (expand-file-name "master.org" mobile-org-dir)
+    :config (progn (setq org-agenda-files (list local-org-dir)
+                         org-default-notes-file (expand-file-name "master.org" local-org-dir)
                          org-src-fontify-natively t
                          org-babel-load-languages (quote
                                                    ((python . t)
@@ -136,9 +136,11 @@
                                               ("python" . python)))
                          org-log-into-drawer "LOGBOOK"
                          org-capture-templates '(("n" "New task" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - Created %U\n   :END:")
-                                                 ("N" "New task - Clock In" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - CREATED %U\n   :END:" :clock-in t)
+                                                 ("N" "New task - Clock in" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - CREATED %U\n   :END:" :clock-in t)
+                                                 ("s" "New sub-task" entry (clock) "*** TODO %?\n   :LOGBOOK:\n   - Created %U\n   :END:")
                                                  ("r" "New review" entry (file+headline org-default-notes-file "Tasks") "** REVIEWING %?\n   :LOGBOOK:\n   - CREATED %U\n   :END:")
-                                                 ("c" "Comment" plain (clock) " - [ ] %?\n%a")))
+                                                 ("c" "Comment" plain (clock) " - %? %U")
+                                                 ("C" "Comment - Include reference to current fine" plain (clock) " - %? %U\n%a")))
                    (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images))))
 
 (defun open-at-point ()

@@ -3,13 +3,13 @@
 (defun c-mode-copyright (year)
   (insert "/*\n")
   (insert "  Jason Woytowich - Copyright (c) " year "\n")
-  (insert "  All right reserved\n")
+  (insert "  All rights reserved\n")
   (insert "*/\n"))
 
 (defun asm-mode-copyright (year)
   (insert ";\n")
   (insert "; Jason Woytowich - Copyright (c) " year "\n")
-  (insert "; All right reserved\n")
+  (insert "; All rights reserved\n")
   (insert ";\n"))
 
 (defvar jfw-copyright-alist
