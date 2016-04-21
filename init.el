@@ -137,10 +137,11 @@
                          org-log-into-drawer "LOGBOOK"
                          org-capture-templates '(("n" "New task" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - Created %U\n   :END:")
                                                  ("N" "New task - Clock in" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - CREATED %U\n   :END:" :clock-in t)
+                                                 ("x" "New task - With reference to current file" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - Created %U\n   :END:\n%a")
                                                  ("s" "New sub-task" entry (clock) "*** TODO %?\n   :LOGBOOK:\n   - Created %U\n   :END:")
                                                  ("r" "New review" entry (file+headline org-default-notes-file "Tasks") "** REVIEWING %?\n   :LOGBOOK:\n   - CREATED %U\n   :END:")
                                                  ("c" "Comment" plain (clock) " - %? %U")
-                                                 ("C" "Comment - Include reference to current fine" plain (clock) " - %? %U\n%a")))
+                                                 ("C" "Comment - Include reference to current file" plain (clock) " - %? %U\n%a")))
                    (add-hook 'org-mode-hook 'visual-line-mode)
                    (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images))))
 
