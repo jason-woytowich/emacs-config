@@ -141,6 +141,7 @@
                                                  ("r" "New review" entry (file+headline org-default-notes-file "Tasks") "** REVIEWING %?\n   :LOGBOOK:\n   - CREATED %U\n   :END:")
                                                  ("c" "Comment" plain (clock) " - %? %U")
                                                  ("C" "Comment - Include reference to current fine" plain (clock) " - %? %U\n%a")))
+                   (add-hook 'org-mode-hook 'visual-line-mode)
                    (add-hook 'org-babel-after-execute-hook 'org-redisplay-inline-images))))
 
 (defun open-at-point ()
