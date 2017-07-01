@@ -31,14 +31,7 @@
  '(ring-bell-function #'ignore)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
- '(magit-git-debug nil)
- '(magit-push-current-set-remote-if-missing nil)
- '(magit-status-headers-hook
-   (quote
-    (magit-insert-diff-filter-header magit-insert-head-header magit-insert-upstream-header)))
  '(make-backup-files nil)
- '(projectile-cache-file "/Users/jwoytowich/.emacs.d/cache/projectile.cache")
- '(projectile-known-projects-file "/Users/jwoytowich/.emacs.d/cache/projectile-bookmarks.eld")
  '(smartparens-global-mode t)
  '(sp-base-key-bindings (quote paredit))
  '(tls-checktrust t)

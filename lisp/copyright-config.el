@@ -6,6 +6,13 @@
   (insert "  All rights reserved\n")
   (insert "*/\n"))
 
+(defun c++-mode-copyright (year)
+  (insert "// -*- mode: c++ -*-\n")
+  (insert "//\n")
+  (insert "// Jason Woytowich - Copyright (c) " year "\n")
+  (insert "// All rights reserved\n")
+  (insert "//\n"))
+
 (defun asm-mode-copyright (year)
   (insert ";\n")
   (insert "; Jason Woytowich - Copyright (c) " year "\n")
@@ -14,6 +21,7 @@
 
 (defvar jfw-copyright-alist
   (list (cons 'c-mode 'c-mode-copyright)
+        (cons 'c++-mode 'c++-mode-copyright)
         (cons 'asm-mode 'asm-mode-copyright)))
 
 (defvar jfw-insert-copyright nil)

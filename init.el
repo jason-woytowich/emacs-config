@@ -2,48 +2,45 @@
 ;;; Commentary:
 ;;; Code:
 ;;; Todo:
-;;;  [ ] - Dash?
 
 (require 'package)
 
-; Load custom file
-(load-file (expand-file-name "~/.emacs.d/custom.el"))
+(defvar config-dir (file-name-directory load-file-name))
+(defvar cache-dir (concat config-dir "cache/"))
 
-(defvar required-packages
-  `(use-package
-    nose
-    jedi
-    smartparens
-    projectile))
-
-(defun check-required-packages ()
-  (dolist (package required-packages)
-    (when (not (package-installed-p package))
-      (package-install package))))
+(load-file (concat config-dir "custom.el"))
 
 (setq package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
                          ("melpa" . "https://melpa.org/packages/")))
 
 (package-initialize)
 
-(check-required-packages)
+(add-to-list 'load-path (concat config-dir "lisp/"))
 
-(let ((elpa-directory (expand-file-name "~/.emacs.d/elpa/")))
-  (dolist (file (directory-files elpa-directory))
-    (add-to-list 'load-path (concat elpa-directory file))))
+(let ((elpa-directory (concat config-dir "elpa/")))
+  (dolist (file (directory-files elpa-directory t "^[^.]"))
+    (add-to-list 'load-path file)))
 
-(setq Info-additional-directory-list '("/opt/local/share/info"))
+(setq Info-additional-directory-list '("/opt/local/share/info"
+                                       "/opt/openocd/share/info"
+                                       "/usr/local/Caskroom/gcc-arm-embedded/6_2-2016q4,20161216/gcc-arm-none-eabi-6_2-2016q4/share/doc/gcc-arm-none-eabi/info/"))
 
 (fset 'yes-or-no-p 'y-or-n-p)
 
 (defun handle-large-files ()
+  "Disable features that may lag on large files."
   (when (> (buffer-size) (* 1024 1024))
     (setq buffer-read-only t)
     (buffer-disable-undo)
     (fundamental-mode)))
-
 (add-hook 'find-file-hook 'handle-large-files)
 
+(use-package projectile
+  :ensure
+  :config  (setq projectile-cache-file (concat cache-dir "projectile.cache")
+                 projectile-known-projects-file (concat cache-dir "projectile-bookmarks.eld")))
+(use-package nose :ensure)
+(use-package jedi :ensure)
 (use-package ag :ensure)
 (use-package dot-mode :ensure)
 (use-package yaml-mode :ensure)
@@ -66,6 +63,19 @@
                 deft-default-extension "org"
                 deft-text-mode 'org-mode
                 deft-auto-save-interval 0.0))
+
+(use-package org-ref
+  :config (setq org-ref-notes-directory "~/Reading"
+                org-ref-bibliography-notes "~/Reading/index.org"
+                org-ref-default-bibliography '("~/Reading/index.bib")
+                org-ref-pdf-directory "~Reading/lib/"))
+
+(use-package helm-bibtex
+  :config (setq helm-bibtex-bibliography "$SOME/index.bib"
+                helm-bibtex-library-path "$SOME/lib/"
+                helm-bibtex-notes-path "$SOME/index.org"
+                bibtex-completion-bibliography "$SOME/index.bib"
+                bibtex-completion-notes-path "$SOME/index.org"))
 
 (use-package exec-path-from-shell
   :ensure
@@ -90,6 +100,14 @@
                  (add-hook 'haskell-mode-hook 'flycheck-mode)
                  (add-hook 'haskell-mode-hook 'flycheck-haskell-setup)))
 
+
+(require 'ansi-color)
+(defun colorize-compilation-buffer ()
+  (toggle-read-only)
+  (ansi-color-apply-on-region compilation-filter-start (point))
+  (toggle-read-only))
+(add-hook 'compilation-filter-hook 'colorize-compilation-buffer)
+
 (use-package magit
   :ensure
   :bind ("<f9>" . magit-status)
@@ -97,7 +115,9 @@
                        magit-use-overlays nil
                        magit-completing-read-function #'magit-ido-completing-read
                        magit-diff-arguments '("--ignore-all-space")
-                       magit-git-debug t)
+                       magit-git-debug t
+                       magit-push-current-set-remote-if-missing nil
+                       magit-status-headers-hook `(magit-insert-diff-filter-header magit-insert-head-header magit-insert-upstream-header))
                  (defadvice magit-status (around magit-fullscreen activate)
                    (window-configuration-to-register :magit-fullscreen)
                    ad-do-it
@@ -105,10 +125,9 @@
                  (defadvice magit-mode-quit-window (after magit-restore-screen activate)
                    (jump-to-register :magit-fullscreen))))
 
-
 (let ((local-org-dir "~/org/"))
-  (use-package org
     :ensure
+  (use-package org
     :demand
     :bind ("C-c a" . org-agenda)
     :bind ("C-c c" . org-capture)
@@ -116,10 +135,12 @@
                          org-default-notes-file (expand-file-name "master.org" local-org-dir)
                          org-src-fontify-natively t
                          org-babel-load-languages (quote
-                                                   ((python . t)
-                                                    (dot . t)
+                                                   ((dot . t)
                                                     (emacs-lisp . t)
-                                                    (calc . t)))
+                                                    (calc . t)
+                                                    (python . t)
+                                                    (awk . t)
+                                                    (haskell . t)))
                          org-confirm-babel-evaluate nil
                          org-src-lang-modes (quote
                                              (("ocaml" . tuareg)
@@ -154,7 +175,7 @@
 (global-set-key (kbd "C-c o") 'open-at-point)
 
 
-(use-package atom-dark-theme :ensure)
+(use-package spacemacs-light-theme)
 
 (line-number-mode t)
 (column-number-mode t)
@@ -181,12 +202,12 @@
 
 (defvar local-emacs-dir "~/EmacsLocal/")
 
-
 (dolist (file (directory-files local-emacs-dir t "\.el$"))
   (message file)
   (load file))
 
-(provide 'init)
-
-;;; init.el ends here
 (put 'upcase-region 'disabled nil)
+(put 'downcase-region 'disabled nil)
+
+(provide 'init)
+;;; init.el ends here
