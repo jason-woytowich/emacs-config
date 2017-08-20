@@ -38,6 +38,7 @@
 
 (use-package projectile
   :ensure
+  :defer
   :config
   (define-key projectile-mode-map (kbd "C-c p a") #'projectile-ag)
   (define-key projectile-mode-map (kbd "C-c p E") #'jfw-projectile-eshell))
@@ -45,17 +46,18 @@
         projectile-known-projects-file (concat cache-dir "projectile-bookmarks.eld"))
 
 
-(use-package nose :ensure)
-(use-package jedi :ensure)
-(use-package clang-format :ensure)
-(use-package ag :ensure)
-(use-package dot-mode :ensure)
-(use-package yaml-mode :ensure)
-(use-package pretty-lambdada)
-(use-package flycheck-pyflakes :ensure)
+(use-package nose :ensure :defer)
+(use-package jedi :ensure :defer)
+(use-package clang-format :ensure :defer)
+(use-package ag :ensure :defer)
+(use-package dot-mode :ensure :defer)
+(use-package yaml-mode :ensure :defer)
+(use-package pretty-lambdada :ensure :defer)
+(use-package flycheck-pyflakes :ensure :defer)
 
 (use-package elfeed
   :ensure
+  :defer
   :config  (setq elfeed-feeds '(("http://www.haskellforall.com/feeds/posts/default" haskell)
                                 ("https://donsbot.wordpress.com/feed/" haskell)
                                 ("http://www.serpentine.com/blog/feed/" haskell)
@@ -64,15 +66,18 @@
 
 (use-package smex
   :ensure
+  :defer
   :bind ("M-x" . smex)
   :bind ("M-X" . smex-major-mode-commands))
 
 (use-package avy
   :ensure
+  :defer
   :bind ("C-c j" . avy-goto-word-1))
 
 (use-package deft
   :ensure
+  :defer
   :bind ("<f10>" . deft)
   :config (setq deft-directory (expand-file-name "~/org")
                 deft-default-extension "org"
@@ -80,12 +85,14 @@
                 deft-auto-save-interval 0.0))
 
 (use-package org-ref
+  :defer
   :config (setq org-ref-notes-directory "~/Reading"
                 org-ref-bibliography-notes "~/Reading/index.org"
                 org-ref-default-bibliography '("~/Reading/index.bib")
                 org-ref-pdf-directory "~Reading/lib/"))
 
 (use-package helm-bibtex
+  :defer
   :config (setq helm-bibtex-bibliography "$SOME/index.bib"
                 helm-bibtex-library-path "$SOME/lib/"
                 helm-bibtex-notes-path "$SOME/index.org"
@@ -99,16 +106,19 @@
 
 (use-package ido-ubiquitous
   :ensure
+  :defer
   :preface (progn (ido-mode)
                   (ido-ubiquitous-mode)))
 
-(use-package flycheck :ensure)
+(use-package flycheck :ensure :defer)
 
-(use-package flycheck-haskell :ensure)
+(use-package flycheck-haskell :ensure :defer)
+
 (use-package git-gutter-fringe+ :ensure :demand)
 
 (use-package haskell-mode
   :ensure
+  :defer
   :config
   (add-hook 'haskell-mode-hook 'interactive-haskell-mode)
   (add-hook 'haskell-mode-hook 'haskell-doc-mode)
@@ -125,6 +135,7 @@
 
 (use-package magit
   :ensure
+  :defer
   :bind ("<f9>" . magit-status)
   :config (progn (setq magit-last-seen-setup-instructions "1.4.0"
                        magit-use-overlays nil
@@ -143,7 +154,7 @@
 (let ((local-org-dir "~/org/"))
   (use-package org
     :ensure
-    :demand
+    :defer
     :bind ("C-c a" . org-agenda)
     :bind ("C-c c" . org-capture)
     :config (progn (setq org-agenda-files (list local-org-dir)
@@ -189,7 +200,7 @@
 
 (global-set-key (kbd "C-x C-b") 'ibuffer)
 
-(use-package spacemacs-light-theme)
+(use-package spacemacs-light-theme :demand)
 
 (line-number-mode t)
 (column-number-mode t)
