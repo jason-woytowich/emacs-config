@@ -17,9 +17,7 @@
 
 (add-to-list 'load-path (concat config-dir "lisp/"))
 
-(let ((elpa-directory (concat config-dir "elpa/")))
-  (dolist (file (directory-files elpa-directory t "^[^.]"))
-    (add-to-list 'load-path file)))
+(require 'autoloads)
 
 (setq Info-additional-directory-list '("/opt/local/share/info"
                                        "/opt/openocd/share/info"
