@@ -121,6 +121,7 @@
 
 ;;; Commands
 
+;;;###autoload
 (defun reddit (&optional subreddit order)
   "Start reddit.  Optionally include SUBREDDIT or ORDER.  ORDER may be one of \"Hot\" \"New\"."
   (interactive)

@@ -37,6 +37,7 @@
 
 (setq jfw-insert-copyright t)
 
+;;;###autoload
 (defun jfw-copyright-update ()
   (interactive)
   (let ((copyright-inserter (cdr (assoc major-mode jfw-copyright-alist))))
@@ -49,8 +50,6 @@
         (jfw-do-insert-copyright copyright-inserter))
       (copyright-update nil t)
       )))
-
-(add-hook 'before-save-hook 'jfw-copyright-update t)
 
 (provide 'copyright-config)
 ;;; copyright-config.el ends here

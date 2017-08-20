@@ -16,6 +16,7 @@
         (substring abs-path (length abs-root))
       path)))
 
+;;;###autoload
 (defun copy-with-file-and-line-numbers (&optional begin end)
   "Copies the region BEGIN to END with source filename and line numbers as a comment."
   (interactive "r")

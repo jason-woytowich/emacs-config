@@ -24,6 +24,8 @@
                                        "/usr/local/Caskroom/gcc-arm-embedded/6_2-2016q4,20161216/gcc-arm-none-eabi-6_2-2016q4/share/doc/gcc-arm-none-eabi/info/"))
 
 (fset 'yes-or-no-p 'y-or-n-p)
+(setq mac-command-modifier 'meta)
+(setq mac-option-modifier 'super)
 
 (defun handle-large-files ()
   "Disable features that may lag on large files."
@@ -31,19 +33,34 @@
     (setq buffer-read-only t)
     (buffer-disable-undo)
     (fundamental-mode)))
+
 (add-hook 'find-file-hook 'handle-large-files)
 
 (use-package projectile
   :ensure
-  :config  (setq projectile-cache-file (concat cache-dir "projectile.cache")
-                 projectile-known-projects-file (concat cache-dir "projectile-bookmarks.eld")))
+  :config
+  (define-key projectile-mode-map (kbd "C-c p a") #'projectile-ag)
+  (define-key projectile-mode-map (kbd "C-c p E") #'jfw-projectile-eshell))
+  (setq projectsile-cache-file (concat cache-dir "projectile.cache")
+        projectile-known-projects-file (concat cache-dir "projectile-bookmarks.eld"))
+
+
 (use-package nose :ensure)
 (use-package jedi :ensure)
+(use-package clang-format :ensure)
 (use-package ag :ensure)
 (use-package dot-mode :ensure)
 (use-package yaml-mode :ensure)
 (use-package pretty-lambdada)
 (use-package flycheck-pyflakes :ensure)
+
+(use-package elfeed
+  :ensure
+  :config  (setq elfeed-feeds '(("http://www.haskellforall.com/feeds/posts/default" haskell)
+                                ("https://donsbot.wordpress.com/feed/" haskell)
+                                ("http://www.serpentine.com/blog/feed/" haskell)
+                                ("http://lambda.jstolarek.com/feed/" haskell)
+                                "http://irreal.org/blog/?feed=rss2")))
 
 (use-package smex
   :ensure
@@ -92,12 +109,12 @@
 
 (use-package haskell-mode
   :ensure
-  :bind-keymap ("C-c v c" . haskell-cabal-visit-file)
-  :config (progn (add-hook 'haskell-mode-hook 'interactive-haskell-mode)
-                 (add-hook 'haskell-mode-hook 'haskell-doc-mode)
-                 (add-hook 'haskell-mode-hook 'flycheck-mode)
-                 (add-hook 'haskell-mode-hook 'flycheck-haskell-setup)))
-
+  :config
+  (add-hook 'haskell-mode-hook 'interactive-haskell-mode)
+  (add-hook 'haskell-mode-hook 'haskell-doc-mode)
+  (add-hook 'haskell-mode-hook 'flycheck-mode)
+  (add-hook 'haskell-mode-hook 'flycheck-haskell-setup)
+  (define-key haskell-mode-map (kbd "C-c v c") #'haskell-cabal-visit-file))
 
 (require 'ansi-color)
 (defun colorize-compilation-buffer ()
@@ -124,24 +141,22 @@
                    (jump-to-register :magit-fullscreen))))
 
 (let ((local-org-dir "~/org/"))
-    :ensure
   (use-package org
+    :ensure
     :demand
     :bind ("C-c a" . org-agenda)
     :bind ("C-c c" . org-capture)
     :config (progn (setq org-agenda-files (list local-org-dir)
                          org-default-notes-file (expand-file-name "master.org" local-org-dir)
                          org-src-fontify-natively t
-                         org-babel-load-languages (quote
-                                                   ((dot . t)
+                         org-babel-load-languages '((dot . t)
                                                     (emacs-lisp . t)
                                                     (calc . t)
                                                     (python . t)
                                                     (awk . t)
-                                                    (haskell . t)))
+                                                    (haskell . t))
                          org-confirm-babel-evaluate nil
-                         org-src-lang-modes (quote
-                                             (("ocaml" . tuareg)
+                         org-src-lang-modes '(("ocaml" . tuareg)
                                               ("elisp" . emacs-lisp)
                                               ("ditaa" . artist)
                                               ("asymptote" . asy)
@@ -152,7 +167,7 @@
                                               ("cpp" . c++)
                                               ("C++" . c++)
                                               ("screen" . shell-script)
-                                              ("python" . python)))
+                                              ("python" . python))
                          org-log-into-drawer "LOGBOOK"
                          org-capture-templates '(("n" "New task" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - Created %U\n   :END:")
                                                  ("N" "New task - Clock in" entry (file+headline org-default-notes-file "Tasks") "** TODO %?\n   :LOGBOOK:\n   - CREATED %U\n   :END:" :clock-in t)
@@ -172,6 +187,7 @@
     (start-process "*Open-At-Point*" nil "open" url)))
 (global-set-key (kbd "C-c o") 'open-at-point)
 
+(global-set-key (kbd "C-x C-b") 'ibuffer)
 
 (use-package spacemacs-light-theme)
 
@@ -185,18 +201,15 @@
 (add-hook 'prog-mode-hook 'whitespace-mode t)
 
 (add-hook 'before-save-hook 'delete-trailing-whitespace t)
-
-(require 'jasons-helpers)
+(add-hook 'before-save-hook 'jfw-copyright-update t)
 
 (require 'c-config)
 (require 'python-config)
 (require 'lisp-config)
-(require 'key-config)
-(require 'copyright-config)
 (require 'window-config)
 (require 'eshell-config)
-(require 'projectile-config)
-(require 'reddit)
+
+(projectile-global-mode)
 
 (defvar local-emacs-dir "~/EmacsLocal/")
 

@@ -40,6 +40,7 @@
          (path     (split-string name "-")))
        (string-join path ".")))
 
+;;;###autoload
 (defun hgl (query)
   "Run a search for the given QUERY."
   (interactive "sSearch: ")

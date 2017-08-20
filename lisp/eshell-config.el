@@ -2,14 +2,13 @@
 ;;; Commentary:
 ;;; Code:
 
-(require 'eshell)
-
-(defun eshell-clear ()
-  "Clear the eshell."
-  (interactive)
-  (let ((inhibit-read-only t))
-    (erase-buffer)
-    (eshell-send-input)))
+(with-eval-after-load "eshell"
+  (defun eshell-clear ()
+    "Clear the eshell."
+    (interactive)
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (eshell-send-input))))
 
 (provide 'eshell-config)
 
